@@ -50,7 +50,7 @@ START_TEST (check_config_expand)
     config_t c = config_new();
     fail_unless (c != 0);
     int r = config_load(c, SRCDIR "/test_config.xml");
-    
+
     ck_assert_int_eq (0, r);
 
     ck_assert_ptr_eq ((config_elem_t)0, config_get(c, "non.existing.key"));
@@ -137,6 +137,12 @@ START_TEST (check_config_include)
     fail_unless (c != 0);
     int r = config_load(c, SRCDIR "/test_include.xml");
     ck_assert_int_eq (0, r);
+
+    ck_assert_int_eq (1, config_count(c, "test_key"));
+    fail_unless ((const char*)0 == config_get_one(c, "test_key", 1));
+    ck_assert_str_eq ("qwerty", config_get_one(c, "test_key", 0));
+    ck_assert_int_eq (0, config_count(c, "include"));
+
     config_free(c);
 }
 END_TEST

@@ -21,6 +21,8 @@
 #include "util.h"
 #include "expat.h"
 
+static char *path_main_config = NULL;
+
 /** new config structure */
 config_t config_new(void)
 {
@@ -87,6 +89,7 @@ int config_load_with_id(config_t c, const char *file, const char *id)
     char buf[1024], *next;
     struct nad_elem_st **path;
     config_elem_t elem;
+    const char *incFile;
     int rv = 0;
 
     /* open the file */
@@ -265,6 +268,36 @@ int config_load_with_id(config_t c, const char *file, const char *id)
         nad_free(c->nad);
     c->nad = bd.nad;
 
+    if (rv == 0)
+    {
+        config_elem_t elem = config_get(c, "include");
+        if ( (elem != NULL) && (elem->nvalues > 0))
+        {
+            /* store the config path for 'main-config' only */
+            if (path_main_config == NULL)
+            {
+                char *indexFilename = strrchr(file, '/');
+                if (indexFilename != NULL)
+                {
+                    int offset_last_slash = indexFilename - file;
+                    offset_last_slash++;
+                    path_main_config = strndup(file, offset_last_slash);
+                }
+            }
+            int totalIncludes = elem->nvalues;
+            elem->nvalues = 0;
+            while(totalIncludes-- > 0)
+        {
+                incFile = elem->values[totalIncludes];
+                strcpy(buf, path_main_config);
+                strcat(buf, incFile);
+                elem->values = realloc((void *) elem->values, sizeof(char *) * (totalIncludes));
+                xhash_put(c->hash, "include", elem);
+                rv = config_load_with_id(c, buf, id);
+            }
+            free(path_main_config);
+        }
+    }
     return rv;
 }
 
