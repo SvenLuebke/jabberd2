@@ -91,6 +91,7 @@ int config_load_with_id(config_t c, const char *file, const char *id)
     config_elem_t elem;
     const char *incFile;
     int rv = 0;
+    int loop_start;
 
     /* open the file */
     f = fopen(file, "r");
@@ -109,10 +110,20 @@ int config_load_with_id(config_t c, const char *file, const char *id)
         return 1;
     }
 
-    /* nice new nad to parse it into */
-    bd.nad = nad_new();
-    bd.depth = 0;
+    if (c->nad == NULL)
+    {
+        /* nice new nad to parse it into */
+        bd.nad = nad_new();
+        loop_start = 1;
+        bd.depth = 0;
+    }
+    else
+    {
+        bd.nad = c->nad;
+        loop_start = bd.nad->ecur;
+        bd.depth = 1;
 
+    }
     /* setup the parser */
     XML_SetUserData(p, (void *) &bd);
     XML_SetElementHandler(p, _config_startElement, _config_endElement);
@@ -163,7 +174,7 @@ int config_load_with_id(config_t c, const char *file, const char *id)
     path = NULL;
     len = 0, end = 0;
     /* start at 1, so we skip the root element */
-    for(i = 1; i < bd.nad->ecur && rv == 0; i++)
+    for(i = loop_start; i < bd.nad->ecur && rv == 0; i++)
     {
         /* make sure we have enough room to add this element to our path */
         if(end <= bd.nad->elems[i].depth)
@@ -264,7 +275,8 @@ int config_load_with_id(config_t c, const char *file, const char *id)
     if(path != NULL)
         free(path);
 
-    if(c->nad != NULL)
+    /* we nad_free() first run only */
+    if((c->nad != NULL) && (path_main_config == NULL))
         nad_free(c->nad);
     c->nad = bd.nad;
 
